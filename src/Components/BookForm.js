@@ -11,6 +11,14 @@ function BookForm() {
     genre: "",
   });
 
+  const [errors, setErrors] = useState({
+    name: "",
+    author: "",
+    publication: "",
+    price: "",
+    genre: "",
+  });
+
   const [books, setBooks] = useState([]);
 
   useEffect(() => {
@@ -25,18 +33,90 @@ function BookForm() {
     fetchBooks();
   }, []);
 
+  const validateName = (value) => {
+    if (!value.trim()) return "Book name is required.";
+    if (value.trim().length < 2) return "Book name must be at least 2 characters long.";
+    if (value.trim().length > 100) return "Book name cannot exceed 100 characters.";
+    if (!/^[a-zA-Z0-9\s:&'-]+$/.test(value)) return "Book name contains invalid characters.";
+    return "";
+  };
+
+  const validateAuthor = (value) => {
+    if (!value.trim()) return "Author name is required.";
+    if (value.trim().length < 2) return "Author name must be at least 2 characters long.";
+    if (value.trim().length > 50) return "Author name cannot exceed 50 characters.";
+    if (!/^[a-zA-Z\s'-]+$/.test(value)) return "Author name can only contain letters, spaces, hyphens, and apostrophes.";
+    return "";
+  };
+
+  const validatePublication = (value) => {
+    if (!value.trim()) return "Publication is required.";
+    if (value.trim().length < 2) return "Publication name must be at least 2 characters long.";
+    if (value.trim().length > 50) return "Publication name cannot exceed 50 characters.";
+    if (!/^[a-zA-Z0-9\s&'-]+$/.test(value)) return "Publication name contains invalid characters.";
+    return "";
+  };
+
+  const validatePrice = (value) => {
+    if (!value.trim()) return "Price is required.";
+    const numericPrice = parseFloat(value);
+    if (isNaN(numericPrice)) return "Price must be a valid number.";
+    if (numericPrice <= 0) return "Price must be greater than zero.";
+    if (numericPrice > 1000) return "Price cannot exceed $1000.";
+    if (!/^\d+(\.\d{1,2})?$/.test(value)) return "Price must have up to 2 decimal places.";
+    return "";
+  };
+
+  const validateGenre = (value) => {
+    if (!value.trim()) return "Genre is required.";
+    if (value.trim().length < 2) return "Genre must be at least 2 characters long.";
+    if (value.trim().length > 30) return "Genre cannot exceed 30 characters.";
+    if (!/^[a-zA-Z\s-]+$/.test(value)) return "Genre can only contain letters, spaces, and hyphens.";
+    return "";
+  };
+
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData({ ...formData, [name]: value });
+    setFormData(prev => ({ ...prev, [name]: value }));
+    
+    let error = "";
+    switch (name) {
+      case "name": error = validateName(value); break;
+      case "author": error = validateAuthor(value); break;
+      case "publication": error = validatePublication(value); break;
+      case "price": error = validatePrice(value); break;
+      case "genre": error = validateGenre(value); break;
+      default: break;
+    }
+    
+    setErrors(prev => ({ ...prev, [name]: error }));
+  };
+
+  const validateForm = () => {
+    const newErrors = {
+      name: validateName(formData.name),
+      author: validateAuthor(formData.author),
+      publication: validatePublication(formData.publication),
+      price: validatePrice(formData.price),
+      genre: validateGenre(formData.genre)
+    };
+
+    setErrors(newErrors);
+    return Object.values(newErrors).every(error => error === "");
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!validateForm()) {
+      alert("Please correct the errors in the form.");
+      return;
+    }
+
     try {
       const response = await apibk.saveBook(formData);
       console.log("Book saved successfully:", response.data);
 
-      setBooks((prevBooks) => [...prevBooks, response.data]);
+      setBooks(prev => [...prev, response.data]);
 
       setFormData({
         name: "",
@@ -99,6 +179,11 @@ function BookForm() {
             border-color: #007bff;
             box-shadow: 0 0 5px rgba(0, 123, 255, 0.5);
           }
+          .error {
+            color: red;
+            font-size: 0.9rem;
+            margin-left: 10px;
+          }
           .submit-btn {
             display: block;
             width: 40%;
@@ -130,8 +215,9 @@ function BookForm() {
                 name="name"
                 value={formData.name}
                 onChange={handleChange}
-                required
+                autoComplete="off"
               />
+              {errors.name && <span className="error">{errors.name}</span>}
             </div>
             <div className="form-group">
               <label htmlFor="author">Author</label>
@@ -141,8 +227,9 @@ function BookForm() {
                 name="author"
                 value={formData.author}
                 onChange={handleChange}
-                required
+                autoComplete="off"
               />
+              {errors.author && <span className="error">{errors.author}</span>}
             </div>
             <div className="form-group">
               <label htmlFor="publication">Publication</label>
@@ -152,8 +239,9 @@ function BookForm() {
                 name="publication"
                 value={formData.publication}
                 onChange={handleChange}
-                required
+                autoComplete="off"
               />
+              {errors.publication && <span className="error">{errors.publication}</span>}
             </div>
             <div className="form-group">
               <label htmlFor="price">Price</label>
@@ -163,8 +251,11 @@ function BookForm() {
                 name="price"
                 value={formData.price}
                 onChange={handleChange}
-                required
+                step="0.01"
+                min="0"
+                autoComplete="off"
               />
+              {errors.price && <span className="error">{errors.price}</span>}
             </div>
             <div className="form-group">
               <label htmlFor="genre">Genre</label>
@@ -174,8 +265,9 @@ function BookForm() {
                 name="genre"
                 value={formData.genre}
                 onChange={handleChange}
-                required
+                autoComplete="off"
               />
+              {errors.genre && <span className="error">{errors.genre}</span>}
             </div>
             <button type="submit" className="submit-btn">
               Add Book
