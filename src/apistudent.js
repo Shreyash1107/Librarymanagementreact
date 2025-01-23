@@ -33,6 +33,7 @@ const getStudentCount = async () => {
 const saveStudent = async (studentData) => {
   try {
     const response = await api.post('/savestud', studentData); // Matches the @PostMapping("/savestud")
+    alert("Student Saved Successfully");
     console.log("Student saved:", response.data); // Debug log
     console.log("Submitting data:", studentData);
     return response.data;

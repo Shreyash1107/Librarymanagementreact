@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
-import apibk from "../apibk";
+import apibk from "../apibk"; // Assuming apibk is the service for books API
+import apistudent from "../apistudent"; // Assuming apistudent is the service for student API
 
 const StudentForm = () => {
   const [formData, setFormData] = useState({
@@ -7,57 +8,82 @@ const StudentForm = () => {
     email: "",
     contact: "",
     dept: "",
-    bid: "",
+    bid: "", // book id
   });
   const [students, setStudents] = useState([]);
   const [editId, setEditId] = useState(null);
   const [books, setBooks] = useState([]);
 
+  // Fetch books and students
   useEffect(() => {
     const fetchBooks = async () => {
       try {
         const response = await apibk.getBooks();
-        setBooks(response.data);
+        setBooks(response.data); // Assuming response.data is the list of books
       } catch (error) {
         console.error("Error fetching books:", error);
       }
     };
+
+    const fetchStudents = async () => {
+      try {
+        const studentData = await apistudent.getStudents();
+        console.log("Students Data:", studentData);  // Log to confirm bid is included
+        setStudents(studentData); // Assuming studentData is the list of students
+      } catch (error) {
+        console.error("Error fetching students:", error);
+      }
+    };
+
     fetchBooks();
+    fetchStudents();
   }, []);
 
+  // Handle input changes
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleSubmit = (e) => {
+  // Handle form submission
+  const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (editId) {
-      setStudents((prev) =>
-        prev.map((student) =>
-          student.id === editId ? { ...student, ...formData } : student
-        )
-      );
-      setEditId(null);
-    } else {
-      const newStudent = {
-        id: Date.now().toString(),
-        ...formData,
-      };
-      setStudents((prev) => [...prev, newStudent]);
-    }
+    try {
+      if (editId) {
+        // Update student
+        await apistudent.updateStudent({ id: editId, ...formData });
+        setEditId(null); // Reset edit mode
+      } else {
+        // Save new student
+        await apistudent.saveStudent(formData);
+      }
 
-    setFormData({ name: "", email: "", contact: "", dept: "", bid: "" });
+      // Fetch updated students list after save/update
+      const studentData = await apistudent.getStudents();
+      setStudents(studentData); // Update students state with the latest data
+
+      // Clear form after submission
+      setFormData({ name: "", email: "", contact: "", dept: "", bid: "" });
+    } catch (error) {
+      console.error("Error saving/updating student:", error);
+    }
   };
 
+  // Handle edit action
   const handleEdit = (student) => {
     setFormData(student);
-    setEditId(student.id);
+    setEditId(student.id); // Set the id for editing
   };
 
-  const handleDelete = (id) => {
-    setStudents((prev) => prev.filter((student) => student.id !== id));
+  // Handle delete action
+  const handleDelete = async (id) => {
+    try {
+      await apistudent.deleteStudent(id);
+      setStudents((prev) => prev.filter((student) => student.id !== id)); // Remove deleted student from state
+    } catch (error) {
+      console.error("Error deleting student:", error);
+    }
   };
 
   return (
@@ -192,10 +218,10 @@ const StudentForm = () => {
             required
             className="student-input"
           >
-            <option value="">Select Book</option>
+            <option value="">Select Book ID</option>
             {books.map((book) => (
-              <option key={book.id} value={book.id}>
-                {book.name}
+              <option key={book.bid} value={book.bid}>
+                {book.bid} {/* Display only the Book ID */}
               </option>
             ))}
           </select>
@@ -211,7 +237,7 @@ const StudentForm = () => {
               <th>Email</th>
               <th>Contact</th>
               <th>Department</th>
-              <th>Book</th>
+              <th>Book ID</th> {/* Display Book ID instead of Book Name */}
               <th>Actions</th>
             </tr>
           </thead>
@@ -222,9 +248,7 @@ const StudentForm = () => {
                 <td>{student.email}</td>
                 <td>{student.contact}</td>
                 <td>{student.dept}</td>
-                <td>
-                  {books.find((book) => book.id === student.bid)?.name || "N/A"}
-                </td>
+                <td>{student.bid}</td> {/* Ensure bid is displayed */}
                 <td>
                   <div className="action-buttons">
                     <button
@@ -249,5 +273,4 @@ const StudentForm = () => {
     </div>
   );
 };
-
 export default StudentForm;
