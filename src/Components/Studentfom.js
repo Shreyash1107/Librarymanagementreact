@@ -13,32 +13,40 @@ const StudentForm = () => {
   const [students, setStudents] = useState([]);
   const [editId, setEditId] = useState(null);
   const [books, setBooks] = useState([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [studentsPerPage] = useState(5);
 
   // Fetch books and students
-  useEffect(() => {
-    const fetchBooks = async () => {
-      try {
-        const response = await apibk.getBooks();
-        setBooks(response.data); // Assuming response.data is the list of books
-      } catch (error) {
-        console.error("Error fetching books:", error);
-      }
-    };
+ // Fetch students and books
+useEffect(() => {
+  const fetchBooks = async () => {
+    try {
+      const response = await apibk.getBooks();
+      setBooks(response.data); // Assuming response.data is the list of books
+    } catch (error) {
+      console.error("Error fetching books:", error);
+    }
+  };
 
-    const fetchStudents = async () => {
-      try {
-        const studentData = await apistudent.getStudents();
-        console.log("Fetched Students Data:", studentData); // Check if bid is included
-        setStudents(studentData);
-      } catch (error) {
-        console.error("Error fetching students:", error);
-      }
-    };
+  const fetchStudents = async () => {
+    try {
+      const studentData = await apistudent.getStudents();
+      console.log("Fetched Students Data:", studentData); // Check if bid is included
+      // Map the data to include bid correctly
+      const updatedStudents = studentData.map((student) => ({
+        ...student,
+        bid: student.book?.bid || "", // Ensure bid is assigned if it exists
+      }));
+      setStudents(updatedStudents); // Update students state with the latest data
+    } catch (error) {
+      console.error("Error fetching students:", error);
+    }
+  };
 
+  fetchBooks();
+  fetchStudents();
+}, []);
 
-    fetchBooks();
-    fetchStudents();
-  }, []);
 
   // Handle input changes
   const handleInputChange = (e) => {
@@ -94,6 +102,13 @@ const StudentForm = () => {
       console.error("Error deleting student:", error);
     }
   };
+
+  const indexOfLastStudent = currentPage * studentsPerPage;
+  const indexOfFirstStudent = indexOfLastStudent - studentsPerPage;
+  const currentStudents = students.slice(indexOfFirstStudent, indexOfLastStudent);
+
+  const paginate = (pageNumber) => setCurrentPage(pageNumber);
+
 
   return (
     <div>
@@ -174,6 +189,26 @@ const StudentForm = () => {
             border-radius: 4px;
             cursor: pointer;
           }
+            .pagination {
+            display: flex;
+            list-style-type: none;
+            gap: 10px;
+            justify-content: center;
+            margin-top: 20px;
+          }
+          .pagination li {
+            padding: 8px 12px;
+            background-color: #007bff;
+            color: white;
+            border-radius: 4px;
+            cursor: pointer;
+          }
+          .pagination li:hover {
+            background-color: #0056b3;
+          }
+          .pagination li.active {
+            background-color: #28a745;
+          }
         `}
       </style>
 
@@ -251,29 +286,39 @@ const StudentForm = () => {
             </tr>
           </thead>
           <tbody>
-            {students.map((student) => (
-              <tr key={student.sid}>
-                <td>{student.name}</td>
-                <td>{student.email}</td>
-                <td>{student.contact}</td>
-                <td>{student.dept}</td>
-                <td>{student.bid}</td> {/* Display the bid */}
-                <td>
-                  <div className="action-buttons">
-                    <button onClick={() => handleEdit(student)} className="edit-button">
-                      Edit
-                    </button>
-                    <button onClick={() => handleDelete(student.sid)} className="delete-button">
-                      Delete
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-
+  {currentStudents.map((student) => (
+    <tr key={student.sid}>
+      <td>{student.name}</td>
+      <td>{student.email}</td>
+      <td>{student.contact}</td>
+      <td>{student.dept}</td>
+      <td>{student.bid}</td>
+      <td>
+        <div className="action-buttons">
+          <button onClick={() => handleEdit(student)} className="edit-button">
+            Edit
+          </button>
+          <button onClick={() => handleDelete(student.sid)} className="delete-button">
+            Delete
+          </button>
+        </div>
+      </td>
+    </tr>
+  ))}
+</tbody>
 
         </table>
+        <ul className="pagination">
+  {Array.from({ length: Math.ceil(students.length / studentsPerPage) }, (_, index) => (
+    <li
+      key={index + 1}
+      onClick={() => paginate(index + 1)}
+      className={currentPage === index + 1 ? "active" : ""}
+    >
+      {index + 1}
+    </li>
+  ))}
+</ul>
       </div>
     </div>
   );
