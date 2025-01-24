@@ -2,7 +2,6 @@ import axios from 'axios';
 
 const api = axios.create({
   baseURL: 'http://localhost:9090', // Spring Boot API base URL
-  timeout: 1000,
 });
 
 // Fetch all students

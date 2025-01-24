@@ -28,12 +28,13 @@ const StudentForm = () => {
     const fetchStudents = async () => {
       try {
         const studentData = await apistudent.getStudents();
-        console.log("Students Data:", studentData);  // Log to confirm bid is included
-        setStudents(studentData); // Assuming studentData is the list of students
+        console.log("Fetched Students Data:", studentData); // Check if bid is included
+        setStudents(studentData);
       } catch (error) {
         console.error("Error fetching students:", error);
       }
     };
+
 
     fetchBooks();
     fetchStudents();
@@ -61,7 +62,13 @@ const StudentForm = () => {
 
       // Fetch updated students list after save/update
       const studentData = await apistudent.getStudents();
-      setStudents(studentData); // Update students state with the latest data
+
+      // Map the data to include bid directly
+      const updatedStudents = studentData.map((student) => ({
+        ...student,
+        bid: student.book.bid, // Extract bid from book object
+      }));
+      setStudents(updatedStudents); // Update students state with the latest data
 
       // Clear form after submission
       setFormData({ name: "", email: "", contact: "", dept: "", bid: "" });
@@ -69,6 +76,8 @@ const StudentForm = () => {
       console.error("Error saving/updating student:", error);
     }
   };
+
+
 
   // Handle edit action
   const handleEdit = (student) => {
@@ -243,24 +252,18 @@ const StudentForm = () => {
           </thead>
           <tbody>
             {students.map((student) => (
-              <tr key={student.id}>
+              <tr key={student.sid}>
                 <td>{student.name}</td>
                 <td>{student.email}</td>
                 <td>{student.contact}</td>
                 <td>{student.dept}</td>
-                <td>{student.bid}</td> {/* Ensure bid is displayed */}
+                <td>{student.bid}</td> {/* Display the bid */}
                 <td>
                   <div className="action-buttons">
-                    <button
-                      onClick={() => handleEdit(student)}
-                      className="edit-button"
-                    >
+                    <button onClick={() => handleEdit(student)} className="edit-button">
                       Edit
                     </button>
-                    <button
-                      onClick={() => handleDelete(student.id)}
-                      className="delete-button"
-                    >
+                    <button onClick={() => handleDelete(student.sid)} className="delete-button">
                       Delete
                     </button>
                   </div>
@@ -268,6 +271,8 @@ const StudentForm = () => {
               </tr>
             ))}
           </tbody>
+
+
         </table>
       </div>
     </div>
