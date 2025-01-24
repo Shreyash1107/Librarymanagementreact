@@ -20,7 +20,7 @@ function UpdateBook({ bookToUpdate, onUpdateSuccess, onCancel }) {
     const { name, value } = e.target;
     setBook({ ...book, [name]: value });
   };
-
+  
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {

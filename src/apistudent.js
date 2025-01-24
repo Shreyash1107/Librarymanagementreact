@@ -45,7 +45,7 @@ const saveStudent = async (studentData) => {
 // Update an existing student
 const updateStudent = async (studentData) => {
   try {
-    const response = await api.put(`/updatestudent`, studentData); // Matches the @PutMapping("/updatestudent")
+    const response = await api.put(`/updatestudent`, studentData); 
     console.log("Student updated:", response.data); // Debug log
     return response.data;
   } catch (error) {
@@ -54,22 +54,9 @@ const updateStudent = async (studentData) => {
   }
 };
 
-// Delete a student
-const deleteStudent = async (id) => {
-  try {
-    const response = await api.delete(`/removestud/${id}`); // Matches the @DeleteMapping("/removestud/{sid}")
-    console.log("Student deleted successfully");
-    return response.data;
-  } catch (error) {
-    console.error("Error deleting student:", error); // Error handling
-    throw new Error("Error deleting student");
-  }
-};
-
 export default {
   getStudents,
-  getStudentCount,  // Export the new function for getting the student count
+  getStudentCount,  
   saveStudent,
   updateStudent,
-  deleteStudent,
 };

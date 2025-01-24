@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from "react";
 import apibk from "../apibk"; // Assuming apibk is the service for books API
 import apistudent from "../apistudent"; // Assuming apistudent is the service for student API
-
 const StudentForm = () => {
   const [formData, setFormData] = useState({
     name: "",
@@ -22,8 +21,6 @@ const StudentForm = () => {
     dept: "",
     bid: "",
   });
-
-  // Fetch books and students
   useEffect(() => {
     const fetchBooks = async () => {
       try {
@@ -33,7 +30,6 @@ const StudentForm = () => {
         console.error("Error fetching books:", error);
       }
     };
-
     const fetchStudents = async () => {
       try {
         const studentData = await apistudent.getStudents();
@@ -42,51 +38,41 @@ const StudentForm = () => {
         console.error("Error fetching students:", error);
       }
     };
-
     fetchBooks();
     fetchStudents();
   }, []);
-
-  // Handle input changes
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
-
-  // Validation for each field
   const validateName = (name) => {
     const regex = /^[a-zA-Z\s]+$/;
     if (!name) return "Name is required";
     if (!regex.test(name)) return "No special characters except space allowed";
     return "";
   };
-
   const validateEmail = (email) => {
     const regex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
     if (!email) return "Email is required";
     if (!regex.test(email)) return "Invalid email format";
     return "";
   };
-
   const validateContact = (contact) => {
     const regex = /^[0-9]{10}$/;
     if (!contact) return "Contact is required";
     if (!regex.test(contact)) return "Contact must be 10 digits long and only numbers";
     return "";
   };
-
   const validateDept = (dept) => {
     const regex = /^[a-zA-Z\s&-]+$/;
     if (!dept) return "Department is required";
     if (!regex.test(dept)) return "Department can have space, &, and - only";
     return "";
   };
-
   const validateBid = (bid) => {
     if (!bid) return "Book ID is required";
     return "";
   };
-
   const handleKeyUp = (e) => {
     const { name, value } = e.target;
     let errorMsg = "";
@@ -111,8 +97,6 @@ const StudentForm = () => {
     }
     setErrors((prev) => ({ ...prev, [name]: errorMsg }));
   };
-
-  // Handle form submission
   const handleSubmit = async (e) => {
     e.preventDefault();
     const formErrors = {
@@ -126,48 +110,33 @@ const StudentForm = () => {
     if (Object.values(formErrors).every((err) => err === "")) {
       try {
         if (editId) {
-          // Update student
           await apistudent.updateStudent({ id: editId, ...formData });
-          setEditId(null); // Reset edit mode
+          setEditId(null); // Reset edit mode after update
         } else {
-          // Save new student
           await apistudent.saveStudent(formData);
         }
-
-        // Fetch updated students list after save/update
         const studentData = await apistudent.getStudents();
         setStudents(studentData);
-
-        // Clear form after submission
         setFormData({ name: "", email: "", contact: "", dept: "", bid: "" });
       } catch (error) {
         console.error("Error saving/updating student:", error);
       }
     }
   };
-
-  // Handle edit action
   const handleEdit = (student) => {
-    setFormData(student);
-    setEditId(student.id); // Set the id for editing
+    setFormData({
+      name: student.name || "",
+      email: student.email || "",
+      contact: student.contact || "",
+      dept: student.dept || "",
+      bid: student.book?.bid || "", // Safe navigation to handle potential undefined
+    });
+    setEditId(student.id);
   };
-
-  // Handle delete action
-  const handleDelete = async (id) => {
-    try {
-      await apistudent.deleteStudent(id);
-      setStudents((prev) => prev.filter((student) => student.id !== id)); // Remove deleted student from state
-    } catch (error) {
-      console.error("Error deleting student:", error);
-    }
-  };
-
   const indexOfLastStudent = currentPage * studentsPerPage;
   const indexOfFirstStudent = indexOfLastStudent - studentsPerPage;
   const currentStudents = students.slice(indexOfFirstStudent, indexOfLastStudent);
-
   const paginate = (pageNumber) => setCurrentPage(pageNumber);
-
   return (
     <div>
       <style>
@@ -243,14 +212,6 @@ const StudentForm = () => {
             border-radius: 4px;
             cursor: pointer;
           }
-          .delete-button {
-            padding: 5px 10px;
-            background-color: #dc3545;
-            color: white;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-          }
           .pagination {
             display: flex;
             list-style-type: none;
@@ -260,8 +221,8 @@ const StudentForm = () => {
           }
           .pagination li {
             padding: 8px 12px;
-            background-color: #007bff;
             color: white;
+            background-color:rgb(40, 110, 185);
             border-radius: 4px;
             cursor: pointer;
           }
@@ -269,11 +230,10 @@ const StudentForm = () => {
             background-color: #0056b3;
           }
           .pagination li.active {
-            background-color: #28a745;
+            background-color:rgb(6, 17, 29);
           }
         `}
       </style>
-
       <div className="student-container">
         <h2>Student Management</h2>
         <form onSubmit={handleSubmit} className="student-form">
@@ -289,7 +249,6 @@ const StudentForm = () => {
             autoComplete="off"
           />
           {errors.name && <div className="error">{errors.name}</div>}
-
           <input
             type="text"
             name="email"
@@ -302,7 +261,6 @@ const StudentForm = () => {
             autoComplete="off"
           />
           {errors.email && <div className="error">{errors.email}</div>}
-
           <input
             type="text"
             name="contact"
@@ -315,7 +273,6 @@ const StudentForm = () => {
             autoComplete="off"
           />
           {errors.contact && <div className="error">{errors.contact}</div>}
-
           <input
             type="text"
             name="dept"
@@ -328,7 +285,6 @@ const StudentForm = () => {
             autoComplete="off"
           />
           {errors.dept && <div className="error">{errors.dept}</div>}
-
           <select
             name="bid"
             value={formData.bid}
@@ -344,12 +300,10 @@ const StudentForm = () => {
             ))}
           </select>
           {errors.bid && <div className="error">{errors.bid}</div>}
-
           <button type="submit" className="submit-button">
             {editId ? "Update Student" : "Add Student"}
           </button>
         </form>
-
         <table className="student-table">
           <thead>
             <tr>
@@ -358,7 +312,7 @@ const StudentForm = () => {
               <th>Contact</th>
               <th>Department</th>
               <th>Book</th>
-              <th>Actions</th>
+              <th>Update</th>
             </tr>
           </thead>
           <tbody>
@@ -370,24 +324,17 @@ const StudentForm = () => {
                 <td>{student.dept}</td>
                 <td>{student.book.bid}</td>
                 <td className="action-buttons">
-                  <button
+                  <button className="icon-button edit-button"
                     onClick={() => handleEdit(student)}
-                    className="edit-button"
+                    title="Edit"
                   >
-                    Edit
-                  </button>
-                  <button
-                    onClick={() => handleDelete(student.id)}
-                    className="delete-button"
-                  >
-                    Delete
+                    <i className="fas fa-edit"></i>
                   </button>
                 </td>
               </tr>
             ))}
           </tbody>
         </table>
-
         <ul className="pagination">
           {Array.from({ length: Math.ceil(students.length / studentsPerPage) }).map((_, index) => (
             <li
@@ -403,5 +350,4 @@ const StudentForm = () => {
     </div>
   );
 };
-
 export default StudentForm;

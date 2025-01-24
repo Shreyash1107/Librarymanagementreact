@@ -7,7 +7,7 @@ export default {
   saveBook: (book) => apibk.post("/save", book),
   getBooks: () => apibk.get("/view"),
   deleteBook: (id) => apibk.delete(`/delete/${id}`),
-  searchBook: (id) => apibk.get(`/search/${id}`),
+  searchBook: (name) => apibk.get(`/searchbk/${name}`),
   updateBook: (book) => apibk.put("/updatebk", book),
   
   // Get Book Count
