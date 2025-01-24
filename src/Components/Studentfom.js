@@ -15,38 +15,37 @@ const StudentForm = () => {
   const [books, setBooks] = useState([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [studentsPerPage] = useState(5);
+  const [errors, setErrors] = useState({
+    name: "",
+    email: "",
+    contact: "",
+    dept: "",
+    bid: "",
+  });
 
   // Fetch books and students
- // Fetch students and books
-useEffect(() => {
-  const fetchBooks = async () => {
-    try {
-      const response = await apibk.getBooks();
-      setBooks(response.data); // Assuming response.data is the list of books
-    } catch (error) {
-      console.error("Error fetching books:", error);
-    }
-  };
+  useEffect(() => {
+    const fetchBooks = async () => {
+      try {
+        const response = await apibk.getBooks();
+        setBooks(response.data); // Assuming response.data is the list of books
+      } catch (error) {
+        console.error("Error fetching books:", error);
+      }
+    };
 
-  const fetchStudents = async () => {
-    try {
-      const studentData = await apistudent.getStudents();
-      console.log("Fetched Students Data:", studentData); // Check if bid is included
-      // Map the data to include bid correctly
-      const updatedStudents = studentData.map((student) => ({
-        ...student,
-        bid: student.book?.bid || "", // Ensure bid is assigned if it exists
-      }));
-      setStudents(updatedStudents); // Update students state with the latest data
-    } catch (error) {
-      console.error("Error fetching students:", error);
-    }
-  };
+    const fetchStudents = async () => {
+      try {
+        const studentData = await apistudent.getStudents();
+        setStudents(studentData);
+      } catch (error) {
+        console.error("Error fetching students:", error);
+      }
+    };
 
-  fetchBooks();
-  fetchStudents();
-}, []);
-
+    fetchBooks();
+    fetchStudents();
+  }, []);
 
   // Handle input changes
   const handleInputChange = (e) => {
@@ -54,38 +53,98 @@ useEffect(() => {
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
+  // Validation for each field
+  const validateName = (name) => {
+    const regex = /^[a-zA-Z\s]+$/;
+    if (!name) return "Name is required";
+    if (!regex.test(name)) return "No special characters except space allowed";
+    return "";
+  };
+
+  const validateEmail = (email) => {
+    const regex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+    if (!email) return "Email is required";
+    if (!regex.test(email)) return "Invalid email format";
+    return "";
+  };
+
+  const validateContact = (contact) => {
+    const regex = /^[0-9]{10}$/;
+    if (!contact) return "Contact is required";
+    if (!regex.test(contact)) return "Contact must be 10 digits long and only numbers";
+    return "";
+  };
+
+  const validateDept = (dept) => {
+    const regex = /^[a-zA-Z\s&-]+$/;
+    if (!dept) return "Department is required";
+    if (!regex.test(dept)) return "Department can have space, &, and - only";
+    return "";
+  };
+
+  const validateBid = (bid) => {
+    if (!bid) return "Book ID is required";
+    return "";
+  };
+
+  const handleKeyUp = (e) => {
+    const { name, value } = e.target;
+    let errorMsg = "";
+    switch (name) {
+      case "name":
+        errorMsg = validateName(value);
+        break;
+      case "email":
+        errorMsg = validateEmail(value);
+        break;
+      case "contact":
+        errorMsg = validateContact(value);
+        break;
+      case "dept":
+        errorMsg = validateDept(value);
+        break;
+      case "bid":
+        errorMsg = validateBid(value);
+        break;
+      default:
+        break;
+    }
+    setErrors((prev) => ({ ...prev, [name]: errorMsg }));
+  };
+
   // Handle form submission
   const handleSubmit = async (e) => {
     e.preventDefault();
+    const formErrors = {
+      name: validateName(formData.name),
+      email: validateEmail(formData.email),
+      contact: validateContact(formData.contact),
+      dept: validateDept(formData.dept),
+      bid: validateBid(formData.bid),
+    };
+    setErrors(formErrors);
+    if (Object.values(formErrors).every((err) => err === "")) {
+      try {
+        if (editId) {
+          // Update student
+          await apistudent.updateStudent({ id: editId, ...formData });
+          setEditId(null); // Reset edit mode
+        } else {
+          // Save new student
+          await apistudent.saveStudent(formData);
+        }
 
-    try {
-      if (editId) {
-        // Update student
-        await apistudent.updateStudent({ id: editId, ...formData });
-        setEditId(null); // Reset edit mode
-      } else {
-        // Save new student
-        await apistudent.saveStudent(formData);
+        // Fetch updated students list after save/update
+        const studentData = await apistudent.getStudents();
+        setStudents(studentData);
+
+        // Clear form after submission
+        setFormData({ name: "", email: "", contact: "", dept: "", bid: "" });
+      } catch (error) {
+        console.error("Error saving/updating student:", error);
       }
-
-      // Fetch updated students list after save/update
-      const studentData = await apistudent.getStudents();
-
-      // Map the data to include bid directly
-      const updatedStudents = studentData.map((student) => ({
-        ...student,
-        bid: student.book.bid, // Extract bid from book object
-      }));
-      setStudents(updatedStudents); // Update students state with the latest data
-
-      // Clear form after submission
-      setFormData({ name: "", email: "", contact: "", dept: "", bid: "" });
-    } catch (error) {
-      console.error("Error saving/updating student:", error);
     }
   };
-
-
 
   // Handle edit action
   const handleEdit = (student) => {
@@ -108,7 +167,6 @@ useEffect(() => {
   const currentStudents = students.slice(indexOfFirstStudent, indexOfLastStudent);
 
   const paginate = (pageNumber) => setCurrentPage(pageNumber);
-
 
   return (
     <div>
@@ -154,6 +212,10 @@ useEffect(() => {
           .submit-button:hover {
             background-color: #0056b3;
           }
+          .error {
+            color: red;
+            font-size: 12px;
+          }
           .student-table {
             width: 100%;
             border-collapse: collapse;
@@ -189,7 +251,7 @@ useEffect(() => {
             border-radius: 4px;
             cursor: pointer;
           }
-            .pagination {
+          .pagination {
             display: flex;
             list-style-type: none;
             gap: 10px;
@@ -221,40 +283,52 @@ useEffect(() => {
             placeholder="Name"
             value={formData.name}
             onChange={handleInputChange}
+            onKeyUp={handleKeyUp}
             required
             className="student-input"
             autoComplete="off"
           />
+          {errors.name && <div className="error">{errors.name}</div>}
+
           <input
             type="text"
             name="email"
             placeholder="Email"
             value={formData.email}
             onChange={handleInputChange}
+            onKeyUp={handleKeyUp}
             required
             className="student-input"
             autoComplete="off"
           />
+          {errors.email && <div className="error">{errors.email}</div>}
+
           <input
             type="text"
             name="contact"
             placeholder="Contact"
             value={formData.contact}
             onChange={handleInputChange}
+            onKeyUp={handleKeyUp}
             required
             className="student-input"
             autoComplete="off"
           />
+          {errors.contact && <div className="error">{errors.contact}</div>}
+
           <input
             type="text"
             name="dept"
             placeholder="Department"
             value={formData.dept}
             onChange={handleInputChange}
+            onKeyUp={handleKeyUp}
             required
             className="student-input"
             autoComplete="off"
           />
+          {errors.dept && <div className="error">{errors.dept}</div>}
+
           <select
             name="bid"
             value={formData.bid}
@@ -262,18 +336,20 @@ useEffect(() => {
             required
             className="student-input"
           >
-            <option value="">Select Book ID</option>
+            <option value="">Select Book</option>
             {books.map((book) => (
-              <option key={book.bid} value={book.bid}>
-                {book.bid} {/* Display only the Book ID */}
+              <option key={book.id} value={book.id}>
+                {book.bid}
               </option>
             ))}
           </select>
+          {errors.bid && <div className="error">{errors.bid}</div>}
+
           <button type="submit" className="submit-button">
-            {editId ? "Update" : "Add"} Student
+            {editId ? "Update Student" : "Add Student"}
           </button>
         </form>
-        <h3>Student List</h3>
+
         <table className="student-table">
           <thead>
             <tr>
@@ -281,46 +357,51 @@ useEffect(() => {
               <th>Email</th>
               <th>Contact</th>
               <th>Department</th>
-              <th>Book ID</th> {/* Display Book ID instead of Book Name */}
+              <th>Book</th>
               <th>Actions</th>
             </tr>
           </thead>
           <tbody>
-  {currentStudents.map((student) => (
-    <tr key={student.sid}>
-      <td>{student.name}</td>
-      <td>{student.email}</td>
-      <td>{student.contact}</td>
-      <td>{student.dept}</td>
-      <td>{student.bid}</td>
-      <td>
-        <div className="action-buttons">
-          <button onClick={() => handleEdit(student)} className="edit-button">
-            Edit
-          </button>
-          <button onClick={() => handleDelete(student.sid)} className="delete-button">
-            Delete
-          </button>
-        </div>
-      </td>
-    </tr>
-  ))}
-</tbody>
-
+            {currentStudents.map((student) => (
+              <tr key={student.id}>
+                <td>{student.name}</td>
+                <td>{student.email}</td>
+                <td>{student.contact}</td>
+                <td>{student.dept}</td>
+                <td>{student.book.bid}</td>
+                <td className="action-buttons">
+                  <button
+                    onClick={() => handleEdit(student)}
+                    className="edit-button"
+                  >
+                    Edit
+                  </button>
+                  <button
+                    onClick={() => handleDelete(student.id)}
+                    className="delete-button"
+                  >
+                    Delete
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
         </table>
+
         <ul className="pagination">
-  {Array.from({ length: Math.ceil(students.length / studentsPerPage) }, (_, index) => (
-    <li
-      key={index + 1}
-      onClick={() => paginate(index + 1)}
-      className={currentPage === index + 1 ? "active" : ""}
-    >
-      {index + 1}
-    </li>
-  ))}
-</ul>
+          {Array.from({ length: Math.ceil(students.length / studentsPerPage) }).map((_, index) => (
+            <li
+              key={index}
+              className={currentPage === index + 1 ? "active" : ""}
+              onClick={() => paginate(index + 1)}
+            >
+              {index + 1}
+            </li>
+          ))}
+        </ul>
       </div>
     </div>
   );
 };
+
 export default StudentForm;
