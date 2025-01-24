@@ -4,6 +4,7 @@ import apibk from "./apibk";
 import apistudent from "./apistudent";
 import BookForm from "./Components/BookForm";
 import StudentForm from "./Components/Studentfom";
+
 function App() {
   const styles = {
     navbar: {
@@ -62,20 +63,27 @@ function App() {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-      // Fetch Book Count
-      apibk.getBookCount()
-        .then((response) => {
-          setBookCount(response.data);
-        })
-        .catch((error) => console.error("Error fetching book count:", error));
+      const fetchCounts = async () => {
+        try {
+          const bookResponse = await apibk.getBookCount();
+          const studentResponse = await apistudent.getStudentCount();
 
-      // Fetch Student Count
-      apistudent.getStudentCount()
-        .then((response) => {
-          setStudentCount(response.data);
-        })
-        .catch((error) => console.error("Error fetching student count:", error))
-        .finally(() => setLoading(false));  // Set loading to false once data is fetched
+          setBookCount(bookResponse.data || 0);
+          setStudentCount(
+            studentResponse.data !== undefined 
+              ? studentResponse.data 
+              : (studentResponse !== undefined ? studentResponse : 0)
+          );
+        } catch (error) {
+          console.error("Error fetching counts:", error);
+          setBookCount(0);
+          setStudentCount(0);
+        } finally {
+          setLoading(false);
+        }
+      };
+
+      fetchCounts();
     }, []);
 
     if (loading) {
@@ -140,4 +148,5 @@ function App() {
     </Router>
   );
 }
+
 export default App;
