@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from "react";
 import apibk from "../apibk"; // Assuming apibk is the service for books API
 import apistudent from "../apistudent"; // Assuming apistudent is the service for student API
+import DataTable from "react-data-table-component"; // Importing DataTable component
+
 const StudentForm = () => {
   const [formData, setFormData] = useState({
     name: "",
@@ -12,8 +14,7 @@ const StudentForm = () => {
   const [students, setStudents] = useState([]);
   const [editId, setEditId] = useState(null);
   const [books, setBooks] = useState([]);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [studentsPerPage] = useState(5);
+  const [searchTerm, setSearchTerm] = useState("");
   const [errors, setErrors] = useState({
     name: "",
     email: "",
@@ -21,6 +22,10 @@ const StudentForm = () => {
     dept: "",
     bid: "",
   });
+
+  const [currentPage, setCurrentPage] = useState(1); // Track current page
+  const [perPage, setPerPage] = useState(5); // Number of rows per page
+
   useEffect(() => {
     const fetchBooks = async () => {
       try {
@@ -30,6 +35,7 @@ const StudentForm = () => {
         console.error("Error fetching books:", error);
       }
     };
+
     const fetchStudents = async () => {
       try {
         const studentData = await apistudent.getStudents();
@@ -38,41 +44,57 @@ const StudentForm = () => {
         console.error("Error fetching students:", error);
       }
     };
+
     fetchBooks();
     fetchStudents();
   }, []);
+
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
+
+  const handleEdit = (student) => {
+    setFormData({
+      name: student.name,
+      email: student.email,
+      contact: student.contact,
+      dept: student.dept,
+      bid: student.book?.bid || "",
+    });
+    setEditId(student.id); // Set the ID for editing
+  };
+
   const validateName = (name) => {
-    const regex = /^[a-zA-Z\s]+$/;
-    if (!name) return "Name is required";
-    if (!regex.test(name)) return "No special characters except space allowed";
+    if (!name.trim()) return "Name is required.";
+    if (!/^[A-Za-z\s]+$/.test(name)) return "Name must contain only letters and spaces.";
     return "";
   };
+
   const validateEmail = (email) => {
-    const regex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
-    if (!email) return "Email is required";
-    if (!regex.test(email)) return "Invalid email format";
+    if (!email.trim()) return "Email is required.";
+    const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+    if (!emailRegex.test(email)) return "Please enter a valid email address.";
     return "";
   };
+
   const validateContact = (contact) => {
-    const regex = /^[0-9]{10}$/;
-    if (!contact) return "Contact is required";
-    if (!regex.test(contact)) return "Contact must be 10 digits long and only numbers";
+    if (!contact.trim()) return "Contact is required.";
+    const phoneRegex = /^[0-9]{10}$/; // Adjust the regex as needed
+    if (!phoneRegex.test(contact)) return "Please enter a valid 10-digit phone number.";
     return "";
   };
+
   const validateDept = (dept) => {
-    const regex = /^[a-zA-Z\s&-]+$/;
-    if (!dept) return "Department is required";
-    if (!regex.test(dept)) return "Department can have space, &, and - only";
+    if (!dept.trim()) return "Department is required.";
     return "";
   };
+
   const validateBid = (bid) => {
-    if (!bid) return "Book ID is required";
+    if (!bid) return "Please select a book.";
     return "";
   };
+
   const handleKeyUp = (e) => {
     const { name, value } = e.target;
     let errorMsg = "";
@@ -97,46 +119,110 @@ const StudentForm = () => {
     }
     setErrors((prev) => ({ ...prev, [name]: errorMsg }));
   };
-  const handleSubmit = async (e) => {
+
+  const handleSearch = (e) => {
+    setSearchTerm(e.target.value);
+  };
+
+  const handleRowsPerPageChange = (event) => {
+    const value = event.target ? event.target.value : 5; // Default to 5 if undefined
+    setPerPage(Number(value));
+    setCurrentPage(1); // Reset to the first page when rows per page is changed
+  };
+
+
+  const handleSubmit = (e) => {
     e.preventDefault();
-    const formErrors = {
+
+    const newErrors = {
       name: validateName(formData.name),
       email: validateEmail(formData.email),
       contact: validateContact(formData.contact),
       dept: validateDept(formData.dept),
       bid: validateBid(formData.bid),
     };
-    setErrors(formErrors);
-    if (Object.values(formErrors).every((err) => err === "")) {
-      try {
-        if (editId) {
-          await apistudent.updateStudent({ id: editId, ...formData });
-          setEditId(null); // Reset edit mode after update
-        } else {
-          await apistudent.saveStudent(formData);
-        }
-        const studentData = await apistudent.getStudents();
-        setStudents(studentData);
-        setFormData({ name: "", email: "", contact: "", dept: "", bid: "" });
-      } catch (error) {
-        console.error("Error saving/updating student:", error);
-      }
-    }
-  };
-  const handleEdit = (student) => {
-    setFormData({
-      name: student.name || "",
-      email: student.email || "",
-      contact: student.contact || "",
-      dept: student.dept || "",
-      bid: student.book?.bid || "", // Safe navigation to handle potential undefined
-    });
-    setEditId(student.id);
-  };
-  const indexOfLastStudent = currentPage * studentsPerPage;
-  const indexOfFirstStudent = indexOfLastStudent - studentsPerPage;
-  const currentStudents = students.slice(indexOfFirstStudent, indexOfLastStudent);
-  const paginate = (pageNumber) => setCurrentPage(pageNumber);
+
+    setErrors(newErrors);
+  }
+
+  const filteredStudents = students.filter(
+    (student) =>
+      student.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      student.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      student.dept.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  const columns = [
+    {
+      name: "Sr.No.",
+      selector: (row, index) => {
+        const serialNo = (currentPage - 1) * perPage + index + 1;
+        return serialNo; // Display sequential number based on page
+      },
+      sortable: true,
+      maxWidth: '5px',
+    },
+    {
+      name: "Name",
+      selector: (row) => row.name,
+      sortable: true,
+      minWidth: '150px',
+    },
+    {
+      name: "Email",
+      selector: (row) => row.email,
+      sortable: true,
+      minWidth: '220px',
+      style: {
+        textAlign: "center", // Center-align content
+      },
+    },
+    {
+      name: "Contact",
+      selector: (row) => row.contact,
+      sortable: true,
+      minWidth: '150px',
+      style: {
+        textAlign: "center", // Center-align content
+      },
+    },
+    {
+      name: "Department",
+      selector: (row) => row.dept,
+      sortable: true,
+      minWidth: '150px',
+      style: {
+        textAlign: "center", // Center-align content
+      },
+    },
+    {
+      name: "Book",
+      selector: (row) => row.book?.bid || "N/A",
+      sortable: true,
+      style: {
+        textAlign: "center", // Center-align content
+      },
+    },
+    {
+      name: "Actions",
+      button: true,
+      cell: (row) => (
+        <button
+          className="edit-button"
+          onClick={() => handleEdit(row)}
+          title="Edit"
+        >
+          <i className="fas fa-edit"></i>
+        </button>
+      ),
+    },
+  ];
+
+  // Pagination logic to slice the filtered students based on the current page and rows per page
+  const indexOfLastStudent = currentPage * perPage;
+  const indexOfFirstStudent = indexOfLastStudent - perPage;
+  const currentStudents = filteredStudents.slice(indexOfFirstStudent, indexOfLastStudent);
+
   return (
     <div>
       <style>
@@ -185,167 +271,170 @@ const StudentForm = () => {
             color: red;
             font-size: 12px;
           }
-          .student-table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 20px;
-          }
-          .student-table th {
-            background-color: #007bff;
-            color: white;
-            padding: 10px;
-            text-align: left;
-          }
-          .student-table td {
-            padding: 10px;
-            border: 1px solid #ddd;
-          }
-          .action-buttons {
-            display: flex;
-            gap: 10px;
-          }
           .edit-button {
             padding: 5px 10px;
-            background-color: #28a745;
+            background-color:blue;
             color: white;
             border: none;
             border-radius: 4px;
             cursor: pointer;
           }
-          .pagination {
-            display: flex;
-            list-style-type: none;
-            gap: 10px;
-            justify-content: center;
-            margin-top: 20px;
-          }
-          .pagination li {
-            padding: 8px 12px;
-            color: white;
-            background-color:rgb(40, 110, 185);
+          .search-input {
+            margin-bottom: 20px;
+            padding: 10px;
+            font-size: 16px;
+            width: 100%;
             border-radius: 4px;
-            cursor: pointer;
+            border: 1px solid #ccc;
+            transition: border-color 0.3s ease;
           }
-          .pagination li:hover {
-            background-color: #0056b3;
-          }
-          .pagination li.active {
-            background-color:rgb(6, 17, 29);
+          .per-page-select {
+            margin-bottom: 20px;
+            padding: 10px;
+            font-size: 16px;
+            width: 100px;
+            border-radius: 4px;
+            border: 1px solid #ccc;
           }
         `}
       </style>
+
       <div className="student-container">
         <h2>Student Management</h2>
-        <form onSubmit={handleSubmit} className="student-form">
+        <form className="student-form" onSubmit={handleSubmit}>
           <input
             type="text"
             name="name"
+            className="student-input"
             placeholder="Name"
             value={formData.name}
             onChange={handleInputChange}
             onKeyUp={handleKeyUp}
-            required
-            className="student-input"
-            autoComplete="off"
           />
-          {errors.name && <div className="error">{errors.name}</div>}
+          {errors.name && <p className="error">{errors.name}</p>}
+
           <input
-            type="text"
+            type="email"
             name="email"
+            className="student-input"
             placeholder="Email"
             value={formData.email}
             onChange={handleInputChange}
             onKeyUp={handleKeyUp}
-            required
-            className="student-input"
-            autoComplete="off"
           />
-          {errors.email && <div className="error">{errors.email}</div>}
+          {errors.email && <p className="error">{errors.email}</p>}
+
           <input
             type="text"
             name="contact"
+            className="student-input"
             placeholder="Contact"
             value={formData.contact}
             onChange={handleInputChange}
             onKeyUp={handleKeyUp}
-            required
-            className="student-input"
-            autoComplete="off"
           />
-          {errors.contact && <div className="error">{errors.contact}</div>}
+          {errors.contact && <p className="error">{errors.contact}</p>}
+
           <input
             type="text"
             name="dept"
+            className="student-input"
             placeholder="Department"
             value={formData.dept}
             onChange={handleInputChange}
             onKeyUp={handleKeyUp}
-            required
-            className="student-input"
-            autoComplete="off"
           />
-          {errors.dept && <div className="error">{errors.dept}</div>}
+          {errors.dept && <p className="error">{errors.dept}</p>}
+
           <select
             name="bid"
+            className="student-input"
             value={formData.bid}
             onChange={handleInputChange}
-            required
-            className="student-input"
+            onKeyUp={handleKeyUp}
           >
             <option value="">Select Book</option>
             {books.map((book) => (
-              <option key={book.id} value={book.id}>
+              <option key={book.bid} value={book.bid}>
                 {book.bid}
               </option>
             ))}
           </select>
-          {errors.bid && <div className="error">{errors.bid}</div>}
+          {errors.bid && <p className="error">{errors.bid}</p>}
+
           <button type="submit" className="submit-button">
             {editId ? "Update Student" : "Add Student"}
           </button>
         </form>
-        <table className="student-table">
-          <thead>
-            <tr>
-              <th>Name</th>
-              <th>Email</th>
-              <th>Contact</th>
-              <th>Department</th>
-              <th>Book</th>
-              <th>Update</th>
-            </tr>
-          </thead>
-          <tbody>
-            {currentStudents.map((student) => (
-              <tr key={student.id}>
-                <td>{student.name}</td>
-                <td>{student.email}</td>
-                <td>{student.contact}</td>
-                <td>{student.dept}</td>
-                <td>{student.book.bid}</td>
-                <td className="action-buttons">
-                  <button className="icon-button edit-button"
-                    onClick={() => handleEdit(student)}
-                    title="Edit"
-                  >
-                    <i className="fas fa-edit"></i>
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        <ul className="pagination">
-          {Array.from({ length: Math.ceil(students.length / studentsPerPage) }).map((_, index) => (
-            <li
-              key={index}
-              className={currentPage === index + 1 ? "active" : ""}
-              onClick={() => paginate(index + 1)}
-            >
-              {index + 1}
-            </li>
-          ))}
-        </ul>
+
+        <input
+          type="text"
+          className="search-input"
+          placeholder="Search students..."
+          value={searchTerm}
+          onChange={handleSearch}
+        />
+
+        <select
+          className="per-page-select"
+          value={perPage}
+          onChange={handleRowsPerPageChange}
+        >
+          <option value={5}>5 rows</option>
+          <option value={10}>10 rows</option>
+          <option value={15}>15 rows</option>
+        </select>
+
+        <DataTable
+          title="Student List"
+          columns={columns}
+          data={currentStudents}
+          pagination
+          paginationServer
+          paginationRowsPerPageOptions={[5, 10, 15, 20]}
+          paginationTotalRows={filteredStudents.length}
+          onChangePage={(page) => setCurrentPage(page)}
+          onChangeRowsPerPage={handleRowsPerPageChange}
+          paginationPerPage={perPage}
+          customStyles={{
+            rows: {
+              style: {
+                minHeight: "50px",
+                textAlign: "center",
+                display: "flex",
+                justifyContent: "center",
+              },
+            },
+            headCells: {
+              style: {
+                backgroundColor: '#3f51b5',
+                color: 'black',
+                fontWeight: 'bold',
+                fontSize: '16px',
+                textAlign: 'center',
+                justifyContent: 'center',
+                display: 'flex',
+                borderRight: '1px solid',
+              },
+            },
+            cells: {
+              style: {
+                color: 'black',
+                fontSize: '14px',
+                textAlign: 'center',
+                justifyContent: 'center',
+                display: 'flex',
+                borderRight: '1px solid',
+              },
+            },
+            pagination: {
+              style: {
+                color: 'black',
+                padding: '10px',
+              },
+            },
+          }}
+        />
       </div>
     </div>
   );

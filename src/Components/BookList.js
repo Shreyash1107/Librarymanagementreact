@@ -1,17 +1,17 @@
 import React, { useEffect, useState } from "react";
 import axios from "../apibk";
+import DataTable from "react-data-table-component";
 import { FaEdit, FaTrash } from "react-icons/fa";
 import UpdateBook from "./UpdateBook";
 
 function BookList() {
-  const [filteredBooks, setFilteredBooks] = useState([]);
   const [books, setBooks] = useState([]);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [recordsPerPage] = useState(5);
+  const [filteredBooks, setFilteredBooks] = useState([]);
+  const [searchTerm, setSearchTerm] = useState("");
   const [bookToUpdate, setBookToUpdate] = useState(null);
   const [isAdding, setIsAdding] = useState(false);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [noResults, setNoResults] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1); // Track current page
+  const [rowsPerPage, setRowsPerPage] = useState(5); // Track rows per page
 
   useEffect(() => {
     fetchBooks();
@@ -23,50 +23,24 @@ function BookList() {
       const bookData = response.data || [];
       setBooks(bookData);
       setFilteredBooks(bookData);
-      setNoResults(bookData.length === 0);
     } catch (error) {
       console.error("Error fetching books:", error.response || error.message);
-      setNoResults(true);
       setFilteredBooks([]);
     }
   };
 
-  const handleSearch = async (event) => {
-    const name = event.target.value;
-    setSearchTerm(name);
-
-    if (name.trim() === "") {
+  const handleSearch = (event) => {
+    const value = event.target.value.toLowerCase();
+    setSearchTerm(value);
+    if (value.trim() === "") {
       setFilteredBooks(books);
-      setCurrentPage(1);
-      setNoResults(books.length === 0);
     } else {
-      try {
-        const response = await axios.searchBook(name);
-        const searchResults = response.data || [];
-        setFilteredBooks(searchResults);
-        setNoResults(searchResults.length === 0);
-        setCurrentPage(1);
-      } catch (error) {
-        console.error("Error searching for books:", error.response || error.message);
-        setNoResults(true);
-        setFilteredBooks([]);
-      }
-    }
-  };
-
-  const indexOfLastRecord = currentPage * recordsPerPage;
-  const indexOfFirstRecord = indexOfLastRecord - recordsPerPage;
-
-  // Ensure currentRecords is always an array
-  const currentRecords = Array.isArray(filteredBooks)
-    ? filteredBooks.slice(indexOfFirstRecord, indexOfLastRecord)
-    : [];
-
-  const totalPages = Math.max(1, Math.ceil((filteredBooks?.length || 0) / recordsPerPage));
-
-  const handlePageChange = (pageNumber) => {
-    if (pageNumber >= 1 && pageNumber <= totalPages) {
-      setCurrentPage(pageNumber);
+      const filtered = books.filter(
+        (book) =>
+          book.name.toLowerCase().includes(value) ||
+          book.author.toLowerCase().includes(value)
+      );
+      setFilteredBooks(filtered);
     }
   };
 
@@ -83,8 +57,6 @@ function BookList() {
         const updatedBooks = books.filter((book) => book.bid !== bookId);
         setBooks(updatedBooks);
         setFilteredBooks(updatedBooks);
-        setNoResults(updatedBooks.length === 0);
-        setCurrentPage(1);
         alert("Book deleted successfully!");
       }
     } catch (error) {
@@ -93,21 +65,88 @@ function BookList() {
     }
   };
 
-  return (
-    <div style={styles.container}>
-      <h2 style={styles.heading}>Book List</h2>
+  const handlePageChange = (page) => {
+    setCurrentPage(page);
+  };
 
-      <div style={styles.searchContainer}>
+  const handleRowsPerPageChange = (newRowsPerPage) => {
+    setRowsPerPage(newRowsPerPage);
+  };
+
+  const columns = [
+    {
+      name: "Sr.No.",
+      selector: (_, index) => (currentPage - 1) * rowsPerPage + (index + 1),
+      width: "80px",
+    },
+    {
+      name: "Name",
+      selector: (row) => row.name,
+      sortable: true,
+    },
+    {
+      name: "Author",
+      selector: (row) => row.author,
+      sortable: true,
+    },
+    {
+      name: "Publication",
+      selector: (row) => row.publication,
+      sortable: true,
+    },
+    {
+      name: "Price",
+      selector: (row) => `$${row.price}`,
+      sortable: true,
+    },
+    {
+      name: "Genre",
+      selector: (row) => row.genre,
+      sortable: true,
+    },
+    {
+      name: "Actions",
+      cell: (row) => (
+        <>
+          <FaEdit
+            style={{ cursor: "pointer", marginRight: "10px", color: "green" }}
+            title="Update Book"
+            onClick={() => handleUpdate(row)}
+          />
+          <FaTrash
+            style={{ cursor: "pointer", color: "red" }}
+            title="Delete Book"
+            onClick={() => handleDelete(row.bid)}
+          />
+        </>
+      ),
+      ignoreRowClick: true,
+      allowOverflow: true,
+      button: true,
+    },
+  ];
+
+  return (
+    <div>
+      <h2 style={{ textAlign: "center", marginBottom: "20px" }}>Book List</h2>
+
+      <div style={{ textAlign: "center", marginBottom: "20px" }}>
         <input
           type="text"
-          placeholder="Search by book name"
+          placeholder="Search by name or author"
           value={searchTerm}
           onChange={handleSearch}
-          style={styles.searchInput}
+          style={{
+            padding: "10px",
+            width: "60%",
+            fontSize: "16px",
+            border: "1px solid #ccc",
+            borderRadius: "5px",
+          }}
         />
       </div>
 
-      <div style={styles.container}>
+      <div>
         {bookToUpdate && !isAdding && (
           <UpdateBook
             bookToUpdate={bookToUpdate}
@@ -124,144 +163,136 @@ function BookList() {
         )}
       </div>
 
-      {noResults ? (
-  <div style={styles.noResultsMessage}>
-    {searchTerm
-      ? `No books found matching "${searchTerm}"`
-      : "Book Not Found"}
-  </div>
-) : (
-  <>
-    <table style={styles.table}>
-      <thead style={styles.thead}>
-        <tr>
-          <th style={styles.th}>Sr. No.</th>
-          <th style={styles.th}>Name</th>
-          <th style={styles.th}>Author</th>
-          <th style={styles.th}>Publication</th>
-          <th style={styles.th}>Price</th>
-          <th style={styles.th}>Genre</th>
-          <th style={styles.th}>Actions</th>
-        </tr>
-      </thead>
-      <tbody>
-        {currentRecords.map((book, index) => (
-          <tr key={book.bid} style={styles.row}>
-            <td style={styles.td}>{index + indexOfFirstRecord + 1}</td>
-            <td style={styles.td}>{book.name}</td>
-            <td style={styles.td}>{book.author}</td>
-            <td style={styles.td}>{book.publication}</td>
-            <td style={styles.td}>{book.price}</td>
-            <td style={styles.td}>{book.genre}</td>
-            <td style={styles.td}>
-              <FaEdit
-                style={{ cursor: "pointer", marginRight: "10px", color: "green" }}
-                title="Update Book"
-                onClick={() => handleUpdate(book)}
-              />
-              <FaTrash
-                style={{ cursor: "pointer", color: "red" }}
-                title="Delete Book"
-                onClick={() => handleDelete(book.bid)}
-              />
-            </td>
-          </tr>
-        ))}
-      </tbody>
-    </table>
+      <DataTable
+        columns={columns}
+        data={filteredBooks}
+        pagination
+        paginationPerPage={rowsPerPage}
+        paginationRowsPerPageOptions={[5, 10, 15, 20]}
+        onChangePage={handlePageChange}
+        onChangeRowsPerPage={handleRowsPerPageChange}
+        highlightOnHover
+        fixedHeader
+        fixedHeaderScrollHeight="400px"
+        noDataComponent={<div className="no-data">No books found!</div>}
+        customStyles={{
+          rows: {
+            style: {
+              minHeight: "50px",
+            },
+          },
+          headCells: {
+            style: {
+              backgroundColor: '#3f51b5',
+              color: 'black',
+              fontWeight: 'bold',
+              fontSize: '16px',
+              textAlign: 'center',
+              borderRight: '1px solid',
+            },
+          },
+          cells: {
+            style: {
+              color: 'black',
+              fontSize: '14px',
+              textAlign: 'center',
+              borderRight: '1px solid',
+            },
+          },
+          pagination: {
+            style: {
+              color: 'black',
+              padding: '10px',
+            },
+          },
+        }}
+      />
 
-    {filteredBooks.length > recordsPerPage && (
-      <div style={styles.pagination}>
-        {[...Array(totalPages)].map((_, pageNumber) => (
-          <button
-            key={pageNumber + 1}
-            onClick={() => handlePageChange(pageNumber + 1)}
-            disabled={currentPage === pageNumber + 1}
-            style={{
-              ...styles.pageButton,
-              ...(currentPage === pageNumber + 1 ? styles.activePageButton : {}),
-            }}
-          >
-            {pageNumber + 1}
-          </button>
-        ))}
-      </div>
-    )}
-  </>
-)}
+      <style jsx>{`
+        .no-data {
+          text-align: center;
+          font-size: 18px;
+          color: red;
+          margin: 20px 0;
+        }
 
+        .pagination-button {
+          background-color: #007bff;
+          color: black;
+          border: none;
+          border-radius: 5px;
+          padding: 5px 10px;
+          margin: 0 5px;
+          cursor: pointer;
+          font-size: 14px;
+        }
+
+        .pagination-button:hover {
+          background-color: #0056b3;
+        }
+
+        .pagination-button-active {
+          background-color: #28a745;
+          color: #ffffff;
+          font-weight: bold;
+        }
+
+        .pagination-container {
+          background-color: #007BFF;
+          border-top: 1px solid #ddd;
+          padding: 10px;
+        }
+
+        .table-header {
+          background-color: #3f51b5;
+          color: #ffffff;
+          font-weight: bold;
+          font-size: 16px;
+          text-align: center;
+        }
+
+        .react-data-table-component {
+          overflow-x: hidden !important;
+        }
+
+        .react-data-table-component .rdt_Table {
+          width: 100% !important;
+          table-layout: auto !important;
+          overflow: hidden !important;
+        }
+
+        .table-row {
+          background-color: #007BFF;
+          color: #212529;
+          font-size: 14px;
+          text-align: center;
+        }
+
+        .table-row:hover {
+          background-color: #e9ecef;
+        }
+
+        /* Add vertical lines between columns */
+        .rdt_Table .rdt_TableHeader {
+          border-right: 1px solid #ddd;
+        }
+
+        .rdt_Table .rdt_TableBody .rdt_TableRow td {
+          border-right: 1px solid #ddd;
+        }
+
+        .rdt_Table .rdt_TableBody .rdt_TableRow td:last-child,
+        .rdt_Table .rdt_TableHeader th:last-child {
+          border-right: none; /* Remove the right border from the last column */
+        }
+
+        .rdt_Table {
+          width: 100%;
+          overflow: hidden;
+        }
+      `}</style>
     </div>
   );
 }
 
-const styles = {
-  container: {
-    margin: "20px",
-    fontFamily: "Arial, sans-serif",
-  },
-  heading: {
-    textAlign: "center",
-    fontSize: "24px",
-    fontWeight: "bold",
-    marginBottom: "20px",
-    color: "#333",
-  },
-  searchContainer: {
-    marginBottom: "20px",
-    textAlign: "center",
-  },
-  searchInput: {
-    padding: "10px",
-    width: "60%",
-    fontSize: "16px",
-    border: "1px solid #ccc",
-    borderRadius: "5px",
-  },
-  table: {
-    width: "100%",
-    borderCollapse: "collapse",
-    marginBottom: "20px",
-    textAlign: "center",
-  },
-  thead: {
-    backgroundColor: "blue",
-    color: "grey",
-  },
-  th: {
-    padding: "15px",
-    fontWeight: "bold",
-    minWidth: "70px",
-    backgroundColor: "#007BFF",
-  },
-  row: {
-    backgroundColor: "#f9f9f9",
-  },
-  td: {
-    padding: "10px",
-    borderBottom: "1px solid #ddd",
-  },
-  pagination: {
-    display: "flex",
-    justifyContent: "center",
-    marginTop: "20px",
-  },
-  pageButton: {
-    padding: "10px",
-    margin: "0 5px",
-    border: "1px solid #ccc",
-    borderRadius: "5px",
-    backgroundColor: "rgb(140, 182, 227)",
-    color: "#ffffff",
-    cursor: "pointer",
-  },
-  activePageButton: {
-    backgroundColor: "rgb(6, 17, 29)",
-  },
-  noResultsMessage: {
-    textAlign: "center",
-    fontSize: "18px",
-    color: "red",
-    marginTop: "20px",
-  },
-};
 export default BookList;
