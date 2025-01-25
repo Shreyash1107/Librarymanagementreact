@@ -53,6 +53,7 @@ const StudentForm = () => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
+  
 
   const handleEdit = (student) => {
     setFormData({
@@ -131,19 +132,32 @@ const StudentForm = () => {
   };
 
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-
-    const newErrors = {
+    const formErrors = {
       name: validateName(formData.name),
       email: validateEmail(formData.email),
       contact: validateContact(formData.contact),
       dept: validateDept(formData.dept),
       bid: validateBid(formData.bid),
     };
-
-    setErrors(newErrors);
-  }
+    setErrors(formErrors);
+    if (Object.values(formErrors).every((err) => err === "")) {
+      try {
+        if (editId) {
+          await apistudent.updateStudent({ id: editId, ...formData });
+          setEditId(null); // Reset edit mode after update
+        } else {
+          await apistudent.saveStudent(formData);
+        }
+        const studentData = await apistudent.getStudents();
+        setStudents(studentData);
+        setFormData({ name: "", email: "", contact: "", dept: "", bid: "" });
+      } catch (error) {
+        console.error("Error saving/updating student:", error);
+      }
+    }
+  };
 
   const filteredStudents = students.filter(
     (student) =>
