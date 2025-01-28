@@ -45,7 +45,9 @@ function BookForm() {
     if (!value.trim()) return "Author name is required.";
     if (value.trim().length < 2) return "Author name must be at least 2 characters long.";
     if (value.trim().length > 50) return "Author name cannot exceed 50 characters.";
-    if (!/^[a-zA-Z\s'-]+$/.test(value)) return "Author name can only contain letters, spaces, hyphens, and apostrophes.";
+    if (!/^[a-zA-Z\s.'-]+$/.test(value)) {
+      return "Author name can only contain letters, spaces, hyphens, dots, and apostrophes.";
+    }    
     return "";
   };
 
@@ -62,7 +64,6 @@ function BookForm() {
     const numericPrice = parseFloat(value);
     if (isNaN(numericPrice)) return "Price must be a valid number.";
     if (numericPrice <= 0) return "Price must be greater than zero.";
-    if (numericPrice > 1000) return "Price cannot exceed $1000.";
     if (!/^\d+(\.\d{1,2})?$/.test(value)) return "Price must have up to 2 decimal places.";
     return "";
   };

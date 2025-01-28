@@ -1,18 +1,19 @@
 import React, { useState, useEffect } from "react";
-import apibk from "../apibk"; // Assuming apibk is the service for books API
-import apistudent from "../apistudent"; // Assuming apistudent is the service for student API
-import DataTable from "react-data-table-component"; // Importing DataTable component
-
+import apibk from "../apibk"; 
+import apistudent from "../apistudent";
+import DataTable from "react-data-table-component";
+import UpdateStudent from "./UpdateStudent";
 const StudentForm = () => {
   const [formData, setFormData] = useState({
     name: "",
     email: "",
     contact: "",
     dept: "",
-    bid: "", // book id
+    bid: "",
   });
   const [students, setStudents] = useState([]);
   const [editId, setEditId] = useState(null);
+  const [studentToUpdate, setStudentToUpdate] = useState(null);
   const [books, setBooks] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [errors, setErrors] = useState({
@@ -22,20 +23,17 @@ const StudentForm = () => {
     dept: "",
     bid: "",
   });
-
-  const [currentPage, setCurrentPage] = useState(1); // Track current page
-  const [perPage, setPerPage] = useState(5); // Number of rows per page
-
+  const [currentPage, setCurrentPage] = useState(1);
+  const [perPage, setPerPage] = useState(5);
   useEffect(() => {
     const fetchBooks = async () => {
       try {
         const response = await apibk.getBooks();
-        setBooks(response.data); // Assuming response.data is the list of books
+        setBooks(response.data);
       } catch (error) {
         console.error("Error fetching books:", error);
       }
     };
-
     const fetchStudents = async () => {
       try {
         const studentData = await apistudent.getStudents();
@@ -44,58 +42,41 @@ const StudentForm = () => {
         console.error("Error fetching students:", error);
       }
     };
-
     fetchBooks();
     fetchStudents();
   }, []);
-
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
-  
-
   const handleEdit = (student) => {
-    setFormData({
-      name: student.name,
-      email: student.email,
-      contact: student.contact,
-      dept: student.dept,
-      bid: student.book?.bid || "",
-    });
-    setEditId(student.id); // Set the ID for editing
+    setStudentToUpdate(student);
   };
-
   const validateName = (name) => {
     if (!name.trim()) return "Name is required.";
     if (!/^[A-Za-z\s]+$/.test(name)) return "Name must contain only letters and spaces.";
     return "";
   };
-
   const validateEmail = (email) => {
     if (!email.trim()) return "Email is required.";
     const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
     if (!emailRegex.test(email)) return "Please enter a valid email address.";
     return "";
   };
-
   const validateContact = (contact) => {
     if (!contact.trim()) return "Contact is required.";
     const phoneRegex = /^[0-9]{10}$/; // Adjust the regex as needed
     if (!phoneRegex.test(contact)) return "Please enter a valid 10-digit phone number.";
     return "";
   };
-
   const validateDept = (dept) => {
     if (!dept.trim()) return "Department is required.";
     return "";
   };
-
   const validateBid = (bid) => {
     if (!bid) return "Please select a book.";
     return "";
   };
-
   const handleKeyUp = (e) => {
     const { name, value } = e.target;
     let errorMsg = "";
@@ -124,14 +105,11 @@ const StudentForm = () => {
   const handleSearch = (e) => {
     setSearchTerm(e.target.value);
   };
-
   const handleRowsPerPageChange = (event) => {
     const value = event.target ? event.target.value : 5; // Default to 5 if undefined
     setPerPage(Number(value));
     setCurrentPage(1); // Reset to the first page when rows per page is changed
   };
-
-
   const handleSubmit = async (e) => {
     e.preventDefault();
     const formErrors = {
@@ -158,14 +136,12 @@ const StudentForm = () => {
       }
     }
   };
-
   const filteredStudents = students.filter(
     (student) =>
       student.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       student.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
       student.dept.toLowerCase().includes(searchTerm.toLowerCase())
   );
-
   const columns = [
     {
       name: "Sr.No.",
@@ -231,12 +207,9 @@ const StudentForm = () => {
       ),
     },
   ];
-
-  // Pagination logic to slice the filtered students based on the current page and rows per page
   const indexOfLastStudent = currentPage * perPage;
   const indexOfFirstStudent = indexOfLastStudent - perPage;
   const currentStudents = filteredStudents.slice(indexOfFirstStudent, indexOfLastStudent);
-
   return (
     <div>
       <style>
@@ -312,7 +285,16 @@ const StudentForm = () => {
           }
         `}
       </style>
-
+      {studentToUpdate && (
+  <UpdateStudent
+    studentToUpdate={studentToUpdate}
+    onUpdateSuccess={() => {
+      setStudentToUpdate(null);
+      apistudent.getStudents().then(data => setStudents(data));
+    }}
+    onCancel={() => setStudentToUpdate(null)}
+  />
+)}
       <div className="student-container">
         <h2>Student Management</h2>
         <form className="student-form" onSubmit={handleSubmit}>
@@ -326,7 +308,6 @@ const StudentForm = () => {
             onKeyUp={handleKeyUp}
           />
           {errors.name && <p className="error">{errors.name}</p>}
-
           <input
             type="email"
             name="email"
@@ -337,7 +318,6 @@ const StudentForm = () => {
             onKeyUp={handleKeyUp}
           />
           {errors.email && <p className="error">{errors.email}</p>}
-
           <input
             type="text"
             name="contact"
@@ -348,7 +328,6 @@ const StudentForm = () => {
             onKeyUp={handleKeyUp}
           />
           {errors.contact && <p className="error">{errors.contact}</p>}
-
           <input
             type="text"
             name="dept"
@@ -359,7 +338,6 @@ const StudentForm = () => {
             onKeyUp={handleKeyUp}
           />
           {errors.dept && <p className="error">{errors.dept}</p>}
-
           <select
             name="bid"
             className="student-input"
@@ -375,12 +353,10 @@ const StudentForm = () => {
             ))}
           </select>
           {errors.bid && <p className="error">{errors.bid}</p>}
-
           <button type="submit" className="submit-button">
             {editId ? "Update Student" : "Add Student"}
           </button>
         </form>
-
         <input
           type="text"
           className="search-input"
@@ -388,7 +364,6 @@ const StudentForm = () => {
           value={searchTerm}
           onChange={handleSearch}
         />
-
         <select
           className="per-page-select"
           value={perPage}
@@ -398,7 +373,6 @@ const StudentForm = () => {
           <option value={10}>10 rows</option>
           <option value={15}>15 rows</option>
         </select>
-
         <DataTable
           title="Student List"
           columns={columns}
